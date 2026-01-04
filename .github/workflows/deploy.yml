@@ -1,9 +1,13 @@
-# This workflow is configured to deploy a static HTML site to GitHub Pages
+# This workflow validates the HTML on Pull Requests and deploys to GitHub Pages on merges to main
 name: Deploy Static Content to Pages
 
 on:
-  # Runs on pushes targeting the default branch (including merges from PRs)
+  # Runs on pushes targeting the default branch
   push:
+    branches: ["main"]
+
+  # Runs on pull requests to allow you to see the "check" before merging
+  pull_request:
     branches: ["main"]
 
   # Allows you to run this workflow manually from the Actions tab
@@ -21,24 +25,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # Job 1: Build and Validate
+  # This runs on BOTH Pull Requests and Pushes to main
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
+      - name: Validate HTML
+        run: |
+          echo "Checking for index.html..."
+          test -f index.html || (echo "index.html not found!" && exit 1)
+          grep -q "</html>" index.html || (echo "Invalid HTML: Missing closing tag" && exit 1)
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # We upload the root directory where your index.html lives
           path: '.'
 
+  # Job 2: Deploy
+  # This runs ONLY on pushes to the main branch (after the PR is merged)
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
