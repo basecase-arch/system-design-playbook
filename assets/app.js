@@ -129,6 +129,37 @@ let showFavoritesOnly = false;
 let filteredSystems = [];
 
 /**
+ * Calculate estimated read time based on content
+ * Average reading speed: 200-250 words per minute (we use 225)
+ */
+function calculateReadTime(system) {
+    // If manually set, use that
+    if (system.estimatedReadTime) {
+        return system.estimatedReadTime;
+    }
+    
+    // Calculate from content
+    let wordCount = 0;
+    
+    // Count words in description
+    wordCount += system.description.split(/\s+/).length;
+    
+    // Count words in ADR sections
+    if (system.adr) {
+        wordCount += (system.adr.problem || '').replace(/<[^>]*>/g, '').split(/\s+/).length;
+        wordCount += (system.adr.context || '').replace(/<[^>]*>/g, '').split(/\s+/).length;
+        wordCount += (system.adr.decision || '').replace(/<[^>]*>/g, '').split(/\s+/).length;
+        wordCount += (system.adr.architecture || '').replace(/<[^>]*>/g, '').split(/\s+/).length;
+        wordCount += (system.adr.consequences || '').replace(/<[^>]*>/g, '').split(/\s+/).length;
+    }
+    
+    // Calculate time (225 words per minute)
+    const minutes = Math.ceil(wordCount / 225);
+    
+    return `${minutes} min`;
+}
+
+/**
  * LocalStorage management for personal learning features
  */
 const StorageManager = {
@@ -234,7 +265,7 @@ function performSearch(query) {
         ? results.map(sys => `
             <div class="search-result-item" onclick="showDetail('${sys.id}'); toggleSearch();">
                 <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white flex-shrink-0">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white flex-shrink-0">
                         <i data-lucide="${sys.icon}" class="w-5 h-5"></i>
                     </div>
                     <div class="flex-1 min-w-0">
@@ -342,12 +373,12 @@ function renderSystems() {
                 <i data-lucide="star" class="w-5 h-5 ${isFav ? 'fill-current' : ''}"></i>
             </button>
             
-            <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white mb-6 shadow-inner">
+            <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white mb-6 shadow-inner">
                 <i data-lucide="${sys.icon}" class="w-5 h-5"></i>
             </div>
             
             <div class="flex items-center gap-2 mb-3">
-                <span class="text-[10px] font-bold uppercase tracking-widest text-blue-600">${sys.category}</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-600">${sys.category}</span>
                 <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${difficultyColor}">${sys.difficulty}</span>
             </div>
             
@@ -360,10 +391,10 @@ function renderSystems() {
             
             <div class="mt-auto space-y-3">
                 <div class="flex items-center justify-between text-xs text-zinc-400">
-                    <span><i data-lucide="clock" class="w-3 h-3 inline"></i> ${sys.estimatedReadTime}</span>
-                    <span><i data-lucide="book-open" class="w-3 h-3 inline"></i> ${sys.metadata.source}</span>
+                    <span><i data-lucide="clock" class="w-3 h-3 inline"></i> ${calculateReadTime(sys)}</span>
+                    <span class="truncate ml-2"><i data-lucide="book-open" class="w-3 h-3 inline"></i> ${sys.metadata?.source || 'Reference'}</span>
                 </div>
-                <button onclick="showDetail('${sys.id}')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95">
+                <button onclick="showDetail('${sys.id}')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95">
                     Examine Logic
                 </button>
             </div>
@@ -395,6 +426,7 @@ function showDetail(id) {
     
     const isFav = StorageManager.isFavorite(id);
     const userNotes = StorageManager.getNotes(id);
+    const readTime = calculateReadTime(sys);
     
     // Get related systems
     const relatedSystems = sys.relatedConcepts 
@@ -405,7 +437,7 @@ function showDetail(id) {
         <div class="mb-16">
             <div class="flex items-start justify-between gap-4 mb-6">
                 <div class="inline-flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                    <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
                     <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Decision Record • ${sys.id.toUpperCase()}</span>
                 </div>
                 <button onclick="toggleFavoriteDetail('${id}')" class="favorite-star ${isFav ? 'is-favorite' : ''} relative">
@@ -416,7 +448,7 @@ function showDetail(id) {
             <div class="flex flex-wrap gap-2 mb-6">
                 <span class="badge badge-${sys.difficulty}">${sys.difficulty}</span>
                 ${sys.tags.map(tag => `<span class="badge badge-tag">${tag}</span>`).join('')}
-                <span class="text-sm text-zinc-400"><i data-lucide="clock" class="w-4 h-4 inline"></i> ${sys.estimatedReadTime}</span>
+                <span class="text-sm text-zinc-400"><i data-lucide="clock" class="w-4 h-4 inline"></i> ${calculateReadTime(sys)}</span>
             </div>
         </div>
         
@@ -461,7 +493,7 @@ function showDetail(id) {
                     <h2>Knowledge Base</h2>
                     <ul class="space-y-4">
                         ${sys.externalLinks.map(link => `
-                            <li><a href="${link.url}" target="_blank" class="text-blue-600 dark:text-blue-400 font-bold hover:underline inline-flex items-center gap-2">
+                            <li><a href="${link.url}" target="_blank" class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline inline-flex items-center gap-2">
                                 <i data-lucide="external-link" class="w-4 h-4"></i> ${link.name}
                             </a></li>
                         `).join('')}
@@ -473,7 +505,7 @@ function showDetail(id) {
                     <textarea 
                         id="userNotes" 
                         placeholder="Add your personal notes, insights, or gotchas here..."
-                        class="w-full min-h-[150px] p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="w-full min-h-[150px] p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         style="color: var(--text-primary);"
                         onblur="saveNotes('${id}')"
                     >${userNotes}</textarea>
@@ -481,13 +513,13 @@ function showDetail(id) {
                 </section>
             </div>
             <div class="space-y-8">
-                <div class="bg-blue-600 rounded-2xl p-8 text-white shadow-xl">
-                    <h4 class="text-blue-100 font-bold uppercase tracking-widest text-[10px] mb-6">Component Stack</h4>
-                    <ul class="space-y-4 font-mono text-xs">${sys.stack.map(s => `<li class="flex items-center gap-3"><i data-lucide="check" class="w-4 h-4 text-blue-200"></i> ${s}</li>`).join('')}</ul>
+                <div class="bg-indigo-600 rounded-2xl p-8 text-white shadow-xl">
+                    <h4 class="text-indigo-100 font-bold uppercase tracking-widest text-[10px] mb-6">Component Stack</h4>
+                    <ul class="space-y-4 font-mono text-xs">${sys.stack.map(s => `<li class="flex items-center gap-3"><i data-lucide="check" class="w-4 h-4 text-indigo-200"></i> ${s}</li>`).join('')}</ul>
                 </div>
                 <div class="p-8 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800">
                     <h4 class="font-bold uppercase tracking-widest text-[10px] mb-4">Verdict</h4>
-                    <p class="text-sm italic leading-relaxed text-zinc-500 dark:text-zinc-400 pl-4 border-l-2 border-blue-600">${sys.adr.consequences}</p>
+                    <p class="text-sm italic leading-relaxed text-zinc-500 dark:text-zinc-400 pl-4 border-l-2 border-indigo-600">${sys.adr.consequences}</p>
                 </div>
                 <div class="p-6 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800">
                     <h4 class="font-bold uppercase tracking-widest text-[10px] mb-4 text-zinc-600 dark:text-zinc-400">Metadata</h4>
@@ -553,7 +585,18 @@ async function loadSystemsData() {
         console.log('Using embedded systems data (local development mode)');
     }
     updateFilterCounts();
+    updateHeroStats();
     renderSystems();
+}
+
+/**
+ * Update hero section stats
+ */
+function updateHeroStats() {
+    const countEl = document.getElementById('heroConceptCount');
+    if (countEl) {
+        countEl.textContent = SYSTEMS.length;
+    }
 }
 
 /**
